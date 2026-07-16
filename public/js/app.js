@@ -77,11 +77,37 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function uploadWithProgress(formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/posts/upload");
+    xhr.timeout = 10 * 60 * 1000; // 10 minutes — generous for slow mobile networks
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    });
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else reject(new Error(data.error || `Upload failed (${xhr.status})`));
+      } catch {
+        reject(new Error(`Upload failed (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload — check your connection"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out after 10 minutes — try a smaller file or a better connection"));
+
+    xhr.send(formData);
+  });
+}
+
 document.getElementById("post-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = e.target;
   const msg = document.getElementById("form-message");
-  msg.textContent = "Uploading…";
+  msg.textContent = "Uploading… 0%";
 
   const formData = new FormData(form);
   // checkboxes need to be sent as 1/0 explicitly
@@ -90,13 +116,13 @@ document.getElementById("post-form")?.addEventListener("submit", async (e) => {
   });
 
   try {
-    const res = await fetch("/api/posts/upload", { method: "POST", body: formData });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Upload failed");
+    const data = await uploadWithProgress(formData, (pct) => {
+      msg.textContent = `Uploading… ${pct}%`;
+    });
 
     // If no schedule time was given, publish right away
     if (!form.scheduled_for.value) {
-      msg.textContent = "Publishing now…";
+      msg.textContent = "Upload complete. Publishing to TikTok…";
       const pubRes = await fetch(`/api/posts/${data.id}/publish-now`, { method: "POST" });
       const pubData = await pubRes.json();
       if (!pubRes.ok) throw new Error(pubData.error || "Publish failed");
