@@ -108,8 +108,29 @@ router.get("/", requireAuth, (req, res) => {
 // Publish one post immediately via the Content Posting API (PULL_FROM_URL flow).
 // Our own /uploads static route must be publicly reachable for this to work,
 // which is why APP_BASE_URL has to be the real deployed URL, not localhost.
+const MIME_BY_EXT = {
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+};
+
+// FILE_UPLOAD does NOT require domain/URL-prefix verification, unlike PULL_FROM_URL.
+// We push the video bytes straight to the upload_url TikTok gives us.
 async function publishPost(post, user) {
-  const videoUrl = `${process.env.APP_BASE_URL}/uploads/${post.video_path}`;
+  const videoPath = path.join(UPLOAD_DIR, post.video_path);
+  const videoSize = fs.statSync(videoPath).size;
+  const ext = path.extname(post.video_path).toLowerCase();
+  const contentType = MIME_BY_EXT[ext] || "video/mp4";
+
+  // TikTok wants chunks between 5MB and 64MB (the final chunk may be up to 128MB).
+  // Files under 5MB (or under our chosen chunk size) go up as a single chunk.
+  const MAX_CHUNK = 10 * 1024 * 1024; // 10MB
+  let chunkSize = videoSize;
+  let totalChunkCount = 1;
+  if (videoSize > MAX_CHUNK) {
+    chunkSize = MAX_CHUNK;
+    totalChunkCount = Math.ceil(videoSize / chunkSize);
+  }
 
   const body = {
     post_info: {
@@ -121,8 +142,10 @@ async function publishPost(post, user) {
       brand_content_toggle: !!post.is_commercial,
     },
     source_info: {
-      source: "PULL_FROM_URL",
-      video_url: videoUrl,
+      source: "FILE_UPLOAD",
+      video_size: videoSize,
+      chunk_size: chunkSize,
+      total_chunk_count: totalChunkCount,
     },
   };
 
@@ -140,7 +163,33 @@ async function publishPost(post, user) {
     throw new Error(initData.error?.message || "TikTok init request failed");
   }
 
-  return initData.data.publish_id;
+  const { upload_url, publish_id } = initData.data;
+
+  // Send the file to TikTok's upload_url, chunk by chunk, each with its own byte range.
+  for (let i = 0; i < totalChunkCount; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, videoSize) - 1;
+    const thisChunkLength = end - start + 1;
+
+    const chunkStream = fs.createReadStream(videoPath, { start, end });
+
+    const putRes = await fetch(upload_url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": contentType,
+        "Content-Range": `bytes ${start}-${end}/${videoSize}`,
+        "Content-Length": String(thisChunkLength),
+      },
+      body: chunkStream,
+    });
+
+    if (!putRes.ok) {
+      const text = await putRes.text().catch(() => "");
+      throw new Error(`Video upload chunk ${i + 1}/${totalChunkCount} failed: ${putRes.status} ${text}`);
+    }
+  }
+
+  return publish_id;
 }
 
 router.post("/:id/publish-now", requireAuth, async (req, res) => {
