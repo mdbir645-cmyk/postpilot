@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — PostPilot</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app">
+  <header class="app-nav">
+    <span class="logo">PostPilot</span>
+    <div class="app-nav-right">
+      <img id="avatar" class="avatar" alt="" src="" hidden>
+      <span id="display-name"></span>
+      <form action="/auth/logout" method="post"><button class="btn-ghost" type="submit">Log out</button></form>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <section class="panel">
+      <h2>New post</h2>
+      <form id="post-form">
+        <label class="field">
+          <span>Video file (MP4, WebM or MOV)</span>
+          <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" required>
+        </label>
+
+        <label class="field">
+          <span>Caption</span>
+          <textarea name="caption" rows="3" maxlength="2200" placeholder="Say something about this post…"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Who can view this</span>
+          <select name="privacy_level" id="privacy_level" required>
+            <option value="">Loading allowed options…</option>
+          </select>
+        </label>
+
+        <fieldset class="checks">
+          <legend>Interactions</legend>
+          <label><input type="checkbox" name="disable_comment"> Turn off comments</label>
+          <label><input type="checkbox" name="disable_duet"> Turn off Duet</label>
+          <label><input type="checkbox" name="disable_stitch"> Turn off Stitch</label>
+        </fieldset>
+
+        <label class="field checkbox-row">
+          <input type="checkbox" name="is_commercial">
+          <span>This post promotes myself, a brand, product, or service</span>
+        </label>
+
+        <label class="field">
+          <span>When should this go out?</span>
+          <input type="datetime-local" name="scheduled_for">
+          <small>Leave blank to publish immediately.</small>
+        </label>
+
+        <label class="field consent-row">
+          <input type="checkbox" id="music-consent" required>
+          <span>By posting, you agree to TikTok's Music Usage Confirmation.</span>
+        </label>
+
+        <button type="submit" class="btn-primary">Queue this post</button>
+        <p id="form-message" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Your call sheet</h2>
+      <div id="post-list" class="post-list">
+        <p class="empty-state">Nothing queued yet — your scheduled and published posts will line up here.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

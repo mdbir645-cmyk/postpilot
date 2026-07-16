@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostPilot — Schedule your TikTok posts</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="slate-bg" aria-hidden="true"></div>
+
+  <main class="landing">
+    <header class="landing-nav">
+      <span class="logo">PostPilot</span>
+      <nav>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">CONTENT SCHEDULING · CREATOR TOOLS</p>
+      <h1>Plan the post.<br>Let PostPilot call the shot.</h1>
+      <p class="hero-sub">
+        Upload once, set the call time, and PostPilot publishes straight to your
+        TikTok profile through the official Content Posting API — no manual
+        re-uploading, no missed windows.
+      </p>
+      <a class="btn-primary" href="/auth/tiktok">Connect your TikTok account</a>
+      <p class="hero-note">You'll be redirected to TikTok to sign in and approve access.</p>
+    </section>
+
+    <section class="slate-strip" aria-label="Post status legend">
+      <div class="slate-card">
+        <span class="dot pending"></span>
+        <span class="slate-label">PENDING</span>
+        <span class="slate-desc">Waiting for its scheduled time</span>
+      </div>
+      <div class="slate-card">
+        <span class="dot publishing"></span>
+        <span class="slate-label">PUBLISHING</span>
+        <span class="slate-desc">Sent to TikTok, processing now</span>
+      </div>
+      <div class="slate-card">
+        <span class="dot published"></span>
+        <span class="slate-label">PUBLISHED</span>
+        <span class="slate-desc">Live on your profile</span>
+      </div>
+      <div class="slate-card">
+        <span class="dot failed"></span>
+        <span class="slate-label">FAILED</span>
+        <span class="slate-desc">Needs your attention</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

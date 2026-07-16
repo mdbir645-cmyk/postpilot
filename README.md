@@ -1,11 +1,80 @@
-<div align="center">
+# PostPilot
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A real, working content scheduler for TikTok creators. Connect your TikTok
+account, upload a video, set who can see it, optionally schedule a future
+publish time, and PostPilot posts it through TikTok's official Content
+Posting API.
 
-  <h1>Built with AI Studio</h2>
+No mock data anywhere — every post in the dashboard is a real row in a
+SQLite database, and every "Publish" click is a real call to
+`open.tiktokapis.com`.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 1. Create your TikTok app
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+1. Go to https://developers.tiktok.com/ → **Manage apps** → **Create app**.
+2. Give it a name that does **not** contain "TikTok" (e.g. "PostPilot").
+3. Add these products: **Login Kit** and **Content Posting API**.
+4. Under Login Kit, add a Redirect URI — this must exactly match
+   `TIKTOK_REDIRECT_URI` below, e.g. `https://your-app.onrender.com/auth/tiktok/callback`.
+5. Copy your **Client Key** and **Client Secret**.
 
-</div>
+## 2. Configure environment variables
+
+Copy `.env.example` to `.env` and fill in:
+
+```
+TIKTOK_CLIENT_KEY=...
+TIKTOK_CLIENT_SECRET=...
+TIKTOK_REDIRECT_URI=https://your-app.onrender.com/auth/tiktok/callback
+APP_BASE_URL=https://your-app.onrender.com
+SESSION_SECRET=some-long-random-string
+```
+
+`APP_BASE_URL` matters: uploaded videos are served from
+`/uploads/<file>` on this same server, and TikTok's API fetches the video
+from that public URL (`PULL_FROM_URL`). This will not work on `localhost`
+during the actual publish step — TikTok's servers can't reach your laptop.
+For local development you can still test the login flow and the UI; use a
+real deployment (or a tunnel like `ngrok`) to test an actual publish.
+
+## 3. Run locally
+
+```
+npm install
+npm start
+```
+
+Visit `http://localhost:3000`.
+
+## 4. Deploy (Render)
+
+1. Push this folder to a GitHub repo.
+2. Render → **New Web Service** → connect the repo.
+3. Build command: `npm install`. Start command: `npm start`.
+4. Add a **persistent disk** mounted at `/data` sized ~1GB if you want
+   uploaded videos and the SQLite file to survive restarts (adjust
+   `UPLOAD_DIR`/db path in `db.js` and `routes/posts.js` if you move them).
+5. Add the environment variables from step 2, using your real Render URL.
+6. Deploy, then go back to the TikTok app dashboard and confirm the
+   Redirect URI matches exactly.
+
+## 5. Before submitting for TikTok review
+
+- [ ] Fill in the real contact details in `public/privacy.html` and `public/terms.html`, and link both from your live app's settings page in the TikTok dashboard.
+- [ ] Log in end-to-end on the live URL at least once so you know OAuth works.
+- [ ] Upload a real test video and confirm it reaches `PUBLISHED` status (it will be private/`SELF_ONLY` until your app is audited — that's expected).
+- [ ] Record a demo video (≤5 clips, ≤50MB each) showing: login → upload → privacy/interaction settings → the consent checkbox → publish → status updating in the call sheet.
+- [ ] In the review form, explain your scopes: `user.info.basic` to show who's logged in, `video.publish` to post the content the user uploaded.
+
+## Project structure
+
+```
+server.js          Express app entry point
+db.js               SQLite schema + connection
+scheduler.js        Cron job that publishes posts when their scheduled time arrives
+routes/auth.js       TikTok OAuth login/callback
+routes/posts.js      Upload, creator-info, publish, status endpoints
+public/              Static frontend (landing, dashboard, privacy, terms)
+uploads/             Uploaded video files (served statically)
+data/                SQLite database file
+```
