@@ -122,14 +122,18 @@ async function publishPost(post, user) {
   const ext = path.extname(post.video_path).toLowerCase();
   const contentType = MIME_BY_EXT[ext] || "video/mp4";
 
-  // TikTok wants chunks between 5MB and 64MB (the final chunk may be up to 128MB).
-  // Files under 5MB (or under our chosen chunk size) go up as a single chunk.
-  const MAX_CHUNK = 10 * 1024 * 1024; // 10MB
-  let chunkSize = videoSize;
-  let totalChunkCount = 1;
-  if (videoSize > MAX_CHUNK) {
-    chunkSize = MAX_CHUNK;
-    totalChunkCount = Math.ceil(videoSize / chunkSize);
+  // TikTok's rule: total_chunk_count = floor(video_size / chunk_size), and the
+  // LAST chunk absorbs whatever remainder is left (so it's <= chunk_size + chunk_size - 1,
+  // capped well under the 128MB max for a final chunk here since chunk_size is 10MB).
+  // Files at or under 64MB must be sent as a single chunk.
+  const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB, within TikTok's allowed 5MB-64MB range
+  let chunkSize, totalChunkCount;
+  if (videoSize <= 64 * 1024 * 1024) {
+    chunkSize = videoSize;
+    totalChunkCount = 1;
+  } else {
+    chunkSize = CHUNK_SIZE;
+    totalChunkCount = Math.floor(videoSize / chunkSize);
   }
 
   const body = {
@@ -165,10 +169,12 @@ async function publishPost(post, user) {
 
   const { upload_url, publish_id } = initData.data;
 
-  // Send the file to TikTok's upload_url, chunk by chunk, each with its own byte range.
+  // Send the file to TikTok's upload_url, chunk by chunk. The last chunk runs to
+  // the end of the file (absorbing any remainder), matching the total_chunk_count above.
   for (let i = 0; i < totalChunkCount; i++) {
     const start = i * chunkSize;
-    const end = Math.min(start + chunkSize, videoSize) - 1;
+    const isLast = i === totalChunkCount - 1;
+    const end = (isLast ? videoSize : start + chunkSize) - 1;
     const thisChunkLength = end - start + 1;
 
     const chunkStream = fs.createReadStream(videoPath, { start, end });
