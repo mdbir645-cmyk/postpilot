@@ -30,12 +30,11 @@ APP_BASE_URL=https://your-app.onrender.com
 SESSION_SECRET=some-long-random-string
 ```
 
-`APP_BASE_URL` matters: uploaded videos are served from
-`/uploads/<file>` on this same server, and TikTok's API fetches the video
-from that public URL (`PULL_FROM_URL`). This will not work on `localhost`
-during the actual publish step — TikTok's servers can't reach your laptop.
-For local development you can still test the login flow and the UI; use a
-real deployment (or a tunnel like `ngrok`) to test an actual publish.
+Publishing uses TikTok's `FILE_UPLOAD` method: PostPilot pushes the video
+bytes directly to the `upload_url` TikTok gives back, instead of asking
+TikTok to pull from a URL on our own domain. This means **no domain/URL
+verification is required** in the TikTok dashboard — that step is only
+needed for `PULL_FROM_URL`, which this app doesn't use.
 
 ## 3. Run locally
 
