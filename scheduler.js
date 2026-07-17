@@ -8,7 +8,7 @@ function startScheduler() {
     const now = Date.now();
     const due = db
       .prepare(
-        `SELECT * FROM scheduled_posts WHERE status = 'PENDING' AND scheduled_for IS NOT NULL AND scheduled_for <= ?`
+        `SELECT * FROM scheduled_posts WHERE status = 'PENDING' AND edit_status = 'READY' AND scheduled_for IS NOT NULL AND scheduled_for <= ?`
       )
       .all(now);
 

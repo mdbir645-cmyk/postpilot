@@ -138,6 +138,25 @@ fieldset.checks label { display: block; font-size: 0.9rem; margin: 6px 0; }
 .status-PUBLISHED { color: var(--green); border-color: var(--green); }
 .status-FAILED { color: var(--red); border-color: var(--red); }
 
+/* ---------- Editor ---------- */
+.editor { margin: 4px 0 20px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.preview-wrap { position: relative; max-width: 220px; margin: 0 auto 14px; border-radius: 8px; overflow: hidden; background: #000; }
+.preview-wrap video { width: 100%; display: block; transition: filter 0.15s; }
+.text-overlay-preview {
+  position: absolute; inset: 0; display: flex; justify-content: center; padding: 10px;
+  text-align: center; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  pointer-events: none; word-break: break-word;
+}
+.text-overlay-preview.hidden-overlay { display: none; }
+
+.editor-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; }
+.editor-readout { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+.editor input[type="range"] { width: 100%; accent-color: var(--amber); margin-bottom: 6px; }
+.editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.editor-note { color: var(--text-dim); font-size: 0.78rem; margin-top: 14px; }
+#cover-canvas { border-radius: 4px; border: 1px solid var(--line); }
+input[type="color"] { padding: 2px; height: 38px; cursor: pointer; }
+
 /* ---------- Legal docs ---------- */
 .doc-content { max-width: 680px; margin: 0 auto; padding: 48px 24px 100px; }
 .doc-content h2 { margin-top: 36px; font-size: 1.2rem; }

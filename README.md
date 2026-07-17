@@ -1,13 +1,36 @@
 # PostPilot
 
-A real, working content scheduler for TikTok creators. Connect your TikTok
-account, upload a video, set who can see it, optionally schedule a future
-publish time, and PostPilot posts it through TikTok's official Content
-Posting API.
+A real, working content scheduler **and editor** for TikTok creators. Connect
+your TikTok account, upload a video, trim it, set a cover frame, add text,
+adjust speed, apply a color filter, choose who can see it, optionally
+schedule a future publish time, and PostPilot posts it through TikTok's
+official Content Posting API.
 
 No mock data anywhere — every post in the dashboard is a real row in a
-SQLite database, and every "Publish" click is a real call to
-`open.tiktokapis.com`.
+SQLite database, every edit is a real `ffmpeg` render, and every "Publish"
+click is a real call to `open.tiktokapis.com`.
+
+## Editor
+
+- **Trim** — pick an in/out point on the timeline.
+- **Cover frame** — scrub to any frame and use it as the TikTok cover
+  (sent as `video_cover_timestamp_ms`, TikTok's own native cover mechanism —
+  no extra image processing needed).
+- **Text overlay** — position (top/center/bottom), color, size.
+- **Speed** — 0.5x–3x, audio pitch-corrected with `atempo`.
+- **Filters** — Vivid, Black & white, Warm, Cool, Vintage.
+
+**Quality policy:** if you don't touch the editor at all, the file that
+reaches TikTok is byte-for-byte your original upload — zero re-encoding.
+The moment you use any editor control, PostPilot re-encodes once, server-side,
+at `-crf 17` (visually near-lossless) so the edit can actually happen —
+this is unavoidable for trim/speed/filter/text, but it's the *only*
+re-encode in the pipeline, and nothing is compressed beyond what's needed
+to apply what you asked for.
+
+Processing runs with `ffmpeg-static` (a bundled ffmpeg binary — no server
+setup needed) and a bundled DejaVu Sans font (`fonts/DejaVuSans-Bold.ttf`)
+for text overlays, so it works the same on Render as anywhere else.
 
 ## 1. Create your TikTok app
 

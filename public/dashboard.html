@@ -22,8 +22,84 @@
       <form id="post-form">
         <label class="field">
           <span>Video file (MP4, WebM or MOV)</span>
-          <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" required>
+          <input type="file" id="video-input" name="video" accept="video/mp4,video/webm,video/quicktime" required>
         </label>
+
+        <div id="editor" class="editor" hidden>
+          <div class="preview-wrap">
+            <video id="preview-video" playsinline muted></video>
+            <div id="text-overlay-preview" class="text-overlay-preview"></div>
+          </div>
+
+          <div class="editor-row">
+            <button type="button" class="btn-ghost" id="btn-set-start">Set trim start here</button>
+            <button type="button" class="btn-ghost" id="btn-set-end">Set trim end here</button>
+            <span id="trim-readout" class="editor-readout">Full clip</span>
+          </div>
+          <input type="range" id="trim-start" min="0" max="1" step="0.1" value="0">
+          <input type="range" id="trim-end" min="0" max="1" step="0.1" value="1">
+
+          <div class="editor-row">
+            <button type="button" class="btn-ghost" id="btn-set-cover">Use this frame as cover</button>
+            <canvas id="cover-canvas" width="64" height="114" hidden></canvas>
+            <span id="cover-readout" class="editor-readout">No cover chosen — TikTok will pick one</span>
+          </div>
+
+          <div class="editor-grid">
+            <label class="field">
+              <span>Playback speed</span>
+              <select id="speed-select">
+                <option value="0.5">0.5x — slow motion</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1x — normal</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+                <option value="3">3x — fast</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Filter</span>
+              <select id="filter-select">
+                <option value="NONE" selected>None</option>
+                <option value="VIVID">Vivid</option>
+                <option value="BW">Black &amp; white</option>
+                <option value="WARM">Warm</option>
+                <option value="COOL">Cool</option>
+                <option value="VINTAGE">Vintage</option>
+              </select>
+            </label>
+          </div>
+
+          <fieldset class="checks">
+            <legend>Text overlay</legend>
+            <label class="field">
+              <span>Text</span>
+              <input type="text" id="text-content" maxlength="80" placeholder="Add text on the video…">
+            </label>
+            <div class="editor-grid">
+              <label class="field">
+                <span>Position</span>
+                <select id="text-position">
+                  <option value="TOP">Top</option>
+                  <option value="CENTER">Center</option>
+                  <option value="BOTTOM" selected>Bottom</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Color</span>
+                <input type="color" id="text-color" value="#ffffff">
+              </label>
+            </div>
+            <label class="field">
+              <span>Size</span>
+              <input type="range" id="text-size" min="20" max="90" value="42">
+            </label>
+          </fieldset>
+
+          <p class="editor-note">Preview here is approximate — trim, speed, filter and text are rendered exactly by the server before publishing.</p>
+        </div>
 
         <label class="field">
           <span>Caption</span>

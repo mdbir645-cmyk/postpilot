@@ -54,8 +54,12 @@ router.get("/creator-info", requireAuth, async (req, res) => {
   }
 });
 
-// Upload a video file to our own server and (optionally) schedule it
-router.post("/upload", requireAuth, upload.single("video"), (req, res) => {
+const { hasAnyEdit, renderEditedVideo, computeCoverTimestampMs } = require("../editor");
+
+// Upload a video file, save its edit settings, and (if any real edit was made)
+// run it through ffmpeg once. If the user made no edits, the original file is
+// used exactly as uploaded — zero re-encoding, zero quality loss.
+router.post("/upload", requireAuth, upload.single("video"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No video file received" });
 
   const {
@@ -66,6 +70,16 @@ router.post("/upload", requireAuth, upload.single("video"), (req, res) => {
     disable_stitch = "0",
     is_commercial = "0",
     scheduled_for = "",
+    original_duration_ms = "",
+    trim_start_ms = "",
+    trim_end_ms = "",
+    speed = "1",
+    filter_preset = "NONE",
+    text_content = "",
+    text_position = "BOTTOM",
+    text_color = "#FFFFFF",
+    text_size = "42",
+    cover_timestamp_ms = "",
   } = req.body;
 
   if (!privacy_level) {
@@ -74,12 +88,15 @@ router.post("/upload", requireAuth, upload.single("video"), (req, res) => {
   }
 
   const scheduledForMs = scheduled_for ? new Date(scheduled_for).getTime() : null;
+  const toIntOrNull = (v) => (v === "" || v == null ? null : parseInt(v, 10));
 
   const result = db
     .prepare(
       `INSERT INTO scheduled_posts
-        (user_id, video_path, caption, privacy_level, disable_comment, disable_duet, disable_stitch, is_commercial, scheduled_for, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`
+        (user_id, video_path, caption, privacy_level, disable_comment, disable_duet, disable_stitch, is_commercial, scheduled_for,
+         original_duration_ms, trim_start_ms, trim_end_ms, speed, filter_preset, text_content, text_position, text_color, text_size,
+         cover_timestamp_ms, edit_status, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PROCESSING', 'PENDING', ?)`
     )
     .run(
       req.user.id,
@@ -91,10 +108,43 @@ router.post("/upload", requireAuth, upload.single("video"), (req, res) => {
       Number(disable_stitch),
       Number(is_commercial),
       scheduledForMs,
+      toIntOrNull(original_duration_ms),
+      toIntOrNull(trim_start_ms),
+      toIntOrNull(trim_end_ms),
+      parseFloat(speed) || 1,
+      filter_preset || "NONE",
+      text_content || null,
+      text_position || "BOTTOM",
+      text_color || "#FFFFFF",
+      toIntOrNull(text_size) || 42,
+      toIntOrNull(cover_timestamp_ms),
       Date.now()
     );
 
-  res.json({ id: result.lastInsertRowid, message: "Post saved" });
+  const postId = result.lastInsertRowid;
+  const post = db.prepare("SELECT * FROM scheduled_posts WHERE id = ?").get(postId);
+
+  if (!hasAnyEdit(post)) {
+    // Nothing to render — the original upload is exactly what gets published.
+    db.prepare("UPDATE scheduled_posts SET edit_status = 'READY' WHERE id = ?").run(postId);
+    return res.json({ id: postId, edited: false });
+  }
+
+  try {
+    const outName = await renderEditedVideo(post, UPLOAD_DIR);
+    db.prepare("UPDATE scheduled_posts SET processed_path = ?, edit_status = 'READY' WHERE id = ?").run(
+      outName,
+      postId
+    );
+    res.json({ id: postId, edited: true });
+  } catch (err) {
+    console.error("ffmpeg render error:", err);
+    db.prepare("UPDATE scheduled_posts SET edit_status = 'EDIT_FAILED', edit_error = ? WHERE id = ?").run(
+      err.message,
+      postId
+    );
+    res.status(500).json({ id: postId, error: "Editing failed: " + err.message });
+  }
 });
 
 // List this user's posts (scheduled + published + failed)
@@ -117,9 +167,10 @@ const MIME_BY_EXT = {
 // FILE_UPLOAD does NOT require domain/URL-prefix verification, unlike PULL_FROM_URL.
 // We push the video bytes straight to the upload_url TikTok gives us.
 async function publishPost(post, user) {
-  const videoPath = path.join(UPLOAD_DIR, post.video_path);
+  const fileToSend = post.processed_path || post.video_path;
+  const videoPath = path.join(UPLOAD_DIR, fileToSend);
   const videoSize = fs.statSync(videoPath).size;
-  const ext = path.extname(post.video_path).toLowerCase();
+  const ext = path.extname(fileToSend).toLowerCase();
   const contentType = MIME_BY_EXT[ext] || "video/mp4";
 
   // TikTok's rule: total_chunk_count = floor(video_size / chunk_size), and the
@@ -136,6 +187,8 @@ async function publishPost(post, user) {
     totalChunkCount = Math.floor(videoSize / chunkSize);
   }
 
+  const coverMs = computeCoverTimestampMs(post);
+
   const body = {
     post_info: {
       title: post.caption || "",
@@ -144,6 +197,7 @@ async function publishPost(post, user) {
       disable_duet: !!post.disable_duet,
       disable_stitch: !!post.disable_stitch,
       brand_content_toggle: !!post.is_commercial,
+      ...(coverMs != null ? { video_cover_timestamp_ms: coverMs } : {}),
     },
     source_info: {
       source: "FILE_UPLOAD",
@@ -203,6 +257,12 @@ router.post("/:id/publish-now", requireAuth, async (req, res) => {
     .prepare("SELECT * FROM scheduled_posts WHERE id = ? AND user_id = ?")
     .get(req.params.id, req.user.id);
   if (!post) return res.status(404).json({ error: "Post not found" });
+  if (post.edit_status === "PROCESSING") {
+    return res.status(409).json({ error: "Still applying your edits — try again in a moment" });
+  }
+  if (post.edit_status === "EDIT_FAILED") {
+    return res.status(422).json({ error: "Editing failed, so this can't be published: " + (post.edit_error || "") });
+  }
 
   try {
     db.prepare("UPDATE scheduled_posts SET status = 'PUBLISHING' WHERE id = ?").run(post.id);
