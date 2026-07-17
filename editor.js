@@ -1,9 +1,9 @@
 const path = require("path");
 const fs = require("fs");
 const ffmpeg = require("fluent-ffmpeg");
-const ffmpegPath = require("ffmpeg-static");
-
-ffmpeg.setFfmpegPath(ffmpegPath);
+// Uses the full ffmpeg build installed system-wide via the Dockerfile (apt-get
+// install ffmpeg). The npm "ffmpeg-static" package's minimal binary is missing
+// filters like drawtext and curves that this editor depends on.
 
 const FONT_PATH = path.join(__dirname, "fonts", "DejaVuSans-Bold.ttf");
 

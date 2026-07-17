@@ -28,9 +28,13 @@ this is unavoidable for trim/speed/filter/text, but it's the *only*
 re-encode in the pipeline, and nothing is compressed beyond what's needed
 to apply what you asked for.
 
-Processing runs with `ffmpeg-static` (a bundled ffmpeg binary — no server
-setup needed) and a bundled DejaVu Sans font (`fonts/DejaVuSans-Bold.ttf`)
-for text overlays, so it works the same on Render as anywhere else.
+Processing uses the **system ffmpeg installed via the included `Dockerfile`**
+(a full build with `drawtext`, `curves`, and every filter this app uses) and
+a bundled DejaVu Sans font (`fonts/DejaVuSans-Bold.ttf`) for text overlays.
+This app must be deployed as a **Docker** service, not Render's plain Node
+buildpack — the npm `ffmpeg-static` package's minimal binary is missing
+filters this editor depends on, which is why you may have seen an
+"Filter not found" error before this was fixed.
 
 ## 1. Create your TikTok app
 
@@ -68,16 +72,22 @@ npm start
 
 Visit `http://localhost:3000`.
 
-## 4. Deploy (Render)
+## 4. Deploy (Render, as a Docker service)
 
 1. Push this folder to a GitHub repo.
 2. Render → **New Web Service** → connect the repo.
-3. Build command: `npm install`. Start command: `npm start`.
-4. Add a **persistent disk** mounted at `/data` sized ~1GB if you want
+3. **Environment: choose "Docker"** (not "Node") — Render will detect the
+   `Dockerfile` automatically and build from it. This installs a full ffmpeg
+   with every filter the editor needs.
+4. If you had an existing Node-buildpack service from before, either change
+   its environment to Docker in Settings, or delete it and create a fresh
+   Docker service — Render doesn't let you switch a Node-native service to
+   Docker in place in all cases.
+5. Add a **persistent disk** mounted at `/data` sized ~1GB if you want
    uploaded videos and the SQLite file to survive restarts (adjust
    `UPLOAD_DIR`/db path in `db.js` and `routes/posts.js` if you move them).
-5. Add the environment variables from step 2, using your real Render URL.
-6. Deploy, then go back to the TikTok app dashboard and confirm the
+6. Add the environment variables from step 2, using your real Render URL.
+7. Deploy, then go back to the TikTok app dashboard and confirm the
    Redirect URI matches exactly.
 
 ## 5. Before submitting for TikTok review
