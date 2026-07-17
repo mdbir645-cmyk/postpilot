@@ -117,7 +117,11 @@ fieldset.checks { border: 1px solid var(--line); border-radius: 8px; padding: 12
 fieldset.checks legend { color: var(--text-dim); font-size: 0.85rem; padding: 0 6px; }
 fieldset.checks label { display: block; font-size: 0.9rem; margin: 6px 0; }
 
-#form-message { font-size: 0.85rem; color: var(--amber); min-height: 1.2em; }
+#form-message { font-size: 0.85rem; color: var(--amber); min-height: 1.2em; transition: color 0.2s; }
+#form-message.msg-success { color: var(--green); }
+#form-message.msg-error { color: var(--red); }
+
+.panel { animation: fadeIn 0.4s ease; }
 
 .post-list { display: flex; flex-direction: column; gap: 12px; }
 .empty-state { color: var(--text-dim); font-size: 0.9rem; }
@@ -137,6 +141,76 @@ fieldset.checks label { display: block; font-size: 0.9rem; margin: 6px 0; }
 .status-PUBLISHING { color: var(--blue); border-color: var(--blue); }
 .status-PUBLISHED { color: var(--green); border-color: var(--green); }
 .status-FAILED { color: var(--red); border-color: var(--red); }
+
+/* ---------- Dropzone ---------- */
+.dropzone {
+  position: relative; border: 1.5px dashed var(--line); border-radius: 12px;
+  padding: 28px 16px; text-align: center; margin-bottom: 18px;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  background: var(--surface-2);
+}
+.dropzone:hover { border-color: var(--amber); background: rgba(255,180,84,0.04); }
+.dropzone.drag-over { border-color: var(--amber); background: rgba(255,180,84,0.08); transform: scale(1.01); }
+.dropzone input[type="file"] {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+}
+.dropzone-icon { color: var(--amber); margin-bottom: 8px; animation: floatY 2.6s ease-in-out infinite; }
+.dropzone-title { font-weight: 600; margin: 0 0 2px; }
+.dropzone-sub { color: var(--text-dim); font-size: 0.82rem; margin: 0; }
+.dropzone-file {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+  animation: fadeSlideIn 0.35s ease;
+}
+.dropzone-clear {
+  background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 0.9rem;
+  padding: 2px 6px; border-radius: 50%; position: relative; z-index: 2; transition: color 0.15s;
+}
+.dropzone-clear:hover { color: var(--red); }
+
+@keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.editor.entering { animation: fadeSlideIn 0.4s ease; }
+
+/* ---------- Buttons & progress ---------- */
+.btn-primary {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.15s ease;
+}
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,180,84,0.25); }
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
+.btn-spinner { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-ghost { transition: border-color 0.15s ease, transform 0.12s ease, color 0.15s ease; }
+.btn-ghost:hover { border-color: var(--amber); color: var(--amber); transform: translateY(-1px); }
+
+.progress-track {
+  height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 12px;
+  border: 1px solid var(--line);
+}
+.progress-fill {
+  height: 100%; width: 0%; background: linear-gradient(90deg, var(--amber), #ffd08a);
+  transition: width 0.25s ease; border-radius: 999px;
+}
+.progress-fill.indeterminate {
+  width: 40% !important; animation: indeterminate 1.1s ease-in-out infinite;
+}
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.field input, .field select, .field textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255,180,84,0.15);
+}
+
+.post-card { animation: fadeSlideIn 0.3s ease; transition: transform 0.15s ease, border-color 0.15s ease; }
+.post-card:hover { border-color: var(--amber); transform: translateY(-1px); }
 
 /* ---------- Editor ---------- */
 .editor { margin: 4px 0 20px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
