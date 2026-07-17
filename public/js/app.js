@@ -81,6 +81,58 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ---------- Dropzone ----------
+
+const videoInput = document.getElementById("video-input");
+const dropzone = document.getElementById("dropzone");
+const dropzoneInner = document.getElementById("dropzone-inner");
+const dropzoneFile = document.getElementById("dropzone-file");
+const dropzoneFilename = document.getElementById("dropzone-filename");
+
+function showChosenFile(file) {
+  dropzoneInner.hidden = true;
+  dropzoneFile.hidden = false;
+  dropzoneFilename.textContent = file.name;
+}
+
+function clearChosenFile() {
+  videoInput.value = "";
+  dropzoneInner.hidden = false;
+  dropzoneFile.hidden = true;
+  document.getElementById("editor").hidden = true;
+}
+
+videoInput?.addEventListener("change", () => {
+  if (videoInput.files[0]) showChosenFile(videoInput.files[0]);
+});
+
+document.getElementById("dropzone-clear")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  clearChosenFile();
+});
+
+["dragover", "dragenter"].forEach((evt) =>
+  dropzone?.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.add("drag-over");
+  })
+);
+["dragleave", "drop"].forEach((evt) =>
+  dropzone?.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("drag-over");
+  })
+);
+dropzone?.addEventListener("drop", (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    videoInput.files = e.dataTransfer.files;
+    showChosenFile(file);
+    videoInput.dispatchEvent(new Event("change"));
+  }
+});
+
 // ---------- Editor ----------
 
 const FILTER_CSS = {
@@ -147,6 +199,9 @@ document.getElementById("video-input")?.addEventListener("change", (e) => {
   const video = document.getElementById("preview-video");
   video.src = URL.createObjectURL(file);
   editor.hidden = false;
+  editor.classList.remove("entering");
+  void editor.offsetWidth; // restart animation
+  editor.classList.add("entering");
 
   video.addEventListener(
     "loadedmetadata",
@@ -249,7 +304,19 @@ document.getElementById("post-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = e.target;
   const msg = document.getElementById("form-message");
-  msg.textContent = "Uploading… 0%";
+  const submitBtn = document.getElementById("submit-btn");
+  const btnLabel = submitBtn.querySelector(".btn-label");
+  const btnSpinner = submitBtn.querySelector(".btn-spinner");
+  const track = document.getElementById("progress-track");
+  const fill = document.getElementById("progress-fill");
+
+  submitBtn.disabled = true;
+  btnLabel.textContent = "Uploading…";
+  btnSpinner.hidden = false;
+  track.hidden = false;
+  fill.classList.remove("indeterminate");
+  fill.style.width = "0%";
+  msg.textContent = "";
 
   const formData = new FormData(form);
   // checkboxes need to be sent as 1/0 explicitly
@@ -271,23 +338,44 @@ document.getElementById("post-form")?.addEventListener("submit", async (e) => {
 
   try {
     const data = await uploadWithProgress(formData, (pct) => {
-      msg.textContent = pct < 100 ? `Uploading… ${pct}%` : "Applying your edits…";
+      fill.style.width = pct + "%";
+      if (pct < 100) {
+        btnLabel.textContent = `Uploading… ${pct}%`;
+      } else {
+        btnLabel.textContent = "Applying your edits…";
+        fill.classList.add("indeterminate");
+      }
     });
 
     // If no schedule time was given, publish right away
     if (!form.scheduled_for.value) {
-      msg.textContent = "Publishing to TikTok…";
+      btnLabel.textContent = "Publishing to TikTok…";
+      fill.classList.add("indeterminate");
       const pubRes = await fetch(`/api/posts/${data.id}/publish-now`, { method: "POST" });
       const pubData = await pubRes.json();
       if (!pubRes.ok) throw new Error(pubData.error || "Publish failed");
     }
 
-    msg.textContent = "Queued.";
+    msg.textContent = "✓ Queued.";
+    msg.classList.remove("msg-error");
+    msg.classList.add("msg-success");
     form.reset();
     document.getElementById("editor").hidden = true;
+    clearChosenFile();
     loadPosts();
   } catch (err) {
     msg.textContent = "Error: " + err.message;
+    msg.classList.remove("msg-success");
+    msg.classList.add("msg-error");
+  } finally {
+    submitBtn.disabled = false;
+    btnLabel.textContent = "Queue this post";
+    btnSpinner.hidden = true;
+    fill.classList.remove("indeterminate");
+    setTimeout(() => {
+      track.hidden = true;
+      fill.style.width = "0%";
+    }, 600);
   }
 });
 
